@@ -27,10 +27,110 @@ namespace EEPROM_Client
         SerialPort ComPort = new SerialPort();
         string InputData = String.Empty;
         int index = 0;
+        string buffer = "";
+        bool isPartial = false;
+
+        int packSize = 64;
+
+        public string testStr1 = "";
+        public string testStr2 = "";
+        public string recvStr1 = "";
+
+        private WriteableBitmap writeableBitmap;
 
         public MainWindow()
         {
             InitializeComponent();
+
+
+            writeableBitmap = new WriteableBitmap(
+                (int)imgMemoryArray.Width,
+                (int)imgMemoryArray.Height,
+                96,
+                96,
+                PixelFormats.Bgr32,
+                null);
+
+            imgMemoryArray.Source = writeableBitmap;
+
+            imgMemoryArray.Stretch = Stretch.None;
+            imgMemoryArray.HorizontalAlignment = HorizontalAlignment.Left;
+            imgMemoryArray.VerticalAlignment = VerticalAlignment.Top;
+
+
+            for (int i = 0; i < packSize; i++)
+            {
+                testStr1 += '1';
+                testStr2 += '0';
+            }
+
+            //for (int i = 0; i < 512; i++)
+            //{
+            //    if (i % 4 != 0)
+            //        DrawArray(i, size, testStr2);
+            //    else
+            //        DrawArray(i, size, testStr1);
+            //}
+
+
+
+        }
+
+
+
+        public void DrawArray(int index, int size, string memoryArray)
+        {
+            int j = 0;
+            for (int i = index * size; i < index * size + memoryArray.Length; i++)
+            {
+
+                int column = i % 512;
+                int row = (int)(i / 512);
+
+                try
+                {
+                    unsafe
+                    {
+                        writeableBitmap.Lock();
+
+                        IntPtr pBackBuffer = writeableBitmap.BackBuffer;
+
+                        // Find the address of the pixel to draw.
+                        pBackBuffer += row * writeableBitmap.BackBufferStride;
+                        pBackBuffer += column * 4;
+                        int color_data = 0;
+                        if (memoryArray[j] == '1')
+                        {
+                            // Compute the pixel's color.
+                            color_data = 0 << 16; // R
+                            color_data |= 255 << 8;   // G
+                            color_data |= 0 << 0;   // B
+                        }
+                        else if (memoryArray[j] == '0')
+                        {
+                            color_data = 255 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 0 << 0;   // B
+                        }
+                        else
+                        {
+                            color_data = 255 << 16; // R
+                            color_data |= 255 << 8;   // G
+                            color_data |= 255 << 0;   // B
+                        }
+
+                        *((int*)pBackBuffer) = color_data;
+                    }
+                    writeableBitmap.AddDirtyRect(new Int32Rect(column, row, 1, 1));
+                }
+                finally
+                {
+                    // Release the back buffer and make it available for display.
+                    writeableBitmap.Unlock();
+                }
+                j++;
+            }
+
         }
 
         public void GetPorts()
@@ -90,20 +190,62 @@ namespace EEPROM_Client
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
             InputData = ComPort.ReadExisting();
-                        
-            index++;
-            Dispatcher.Invoke(() =>
+
+            if (buffer.Length == 0)
+            {
+                if (InputData.Length < packSize)
                 {
-                    txtBox_recieve.AppendText(InputData);
+                    isPartial = true;
+                    buffer += InputData;
+                }
+                else
+                {
+                    isPartial = false;
+                    buffer = InputData;
+                }
+            }
+            else
+            {
+                buffer += InputData;
+                if (buffer.Length == packSize)
+                    isPartial = false;
+            }
+
+            if (!isPartial)
+            {
+                recvStr1 = InputData;
+                Dispatcher.Invoke(() =>
+                {
+
+                    DrawArray(index, packSize, buffer);
+                });
+                index++;
+                if (index >= 512*512 / packSize)
+                {
+                    index = 0;
+                    testStr1 = testStr2;
+                }
+                    
+                Dispatcher.Invoke(() =>
+                {
+                    txtBox_recieve.AppendText(buffer + "\r\n");
                     txtBox_recieve.ScrollToEnd();
                 });
+                buffer = "";
 
+
+                ComPort.Write(testStr1);
+            }
 
         }
 
         private void btn_send_Click(object sender, RoutedEventArgs e)
         {
-            ComPort.Write("Hello xyi\0");
+            //ComPort.Write("Hello\0");
+            ComPort.Write(testStr1);
+
         }
+
+
     }
 }
