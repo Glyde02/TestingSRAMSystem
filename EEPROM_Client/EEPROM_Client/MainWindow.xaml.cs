@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace EEPROM_Client
@@ -25,6 +26,7 @@ namespace EEPROM_Client
     {
         SerialPort ComPort = new SerialPort();
         string InputData = String.Empty;
+        int index = 0;
 
         public MainWindow()
         {
@@ -70,8 +72,8 @@ namespace EEPROM_Client
                 ComPort.BaudRate = 115200;
                 ComPort.DataBits = 8;
                 ComPort.StopBits = StopBits.One;
-                ComPort.Handshake = Handshake.None;
                 ComPort.Parity = Parity.None;
+                ComPort.Handshake = Handshake.None;
                 ComPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
                 ComPort.Open();
 
@@ -87,15 +89,21 @@ namespace EEPROM_Client
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            SerialPort sp = (SerialPort)sender;
-            InputData = sp.ReadExisting();
-            txtBox_recieve.Dispatcher.BeginInvoke(new Action(() => { txtBox_recieve.AppendText(InputData); txtBox_recieve.ScrollToEnd(); }));
+            InputData = ComPort.ReadExisting();
+                        
+            index++;
+            Dispatcher.Invoke(() =>
+                {
+                    txtBox_recieve.AppendText(InputData);
+                    txtBox_recieve.ScrollToEnd();
+                });
+
 
         }
 
         private void btn_send_Click(object sender, RoutedEventArgs e)
         {
-            ComPort.Write("Hello world");
+            ComPort.Write("Hello xyi\0");
         }
     }
 }
