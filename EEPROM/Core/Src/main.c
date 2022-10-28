@@ -42,6 +42,12 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+int packSize = 64;
+uint8_t buf[65];
+uint8_t firstByteWait=1; 
+int offset = 0;
+
 int flag_irq = 0;
 int time_irq = 0;
 const uint8_t digits[]   = { 0xFF, 0xCF, 0xF9, 0xC9 };
@@ -123,15 +129,16 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  
+ 
+	HAL_UART_Receive_IT (&huart2, buf, packSize);
+	
   while (1)
-  {
-		/*
+  {				
+		
 		if(flag_irq && (HAL_GetTick() - time_irq) > 200)
 		{
 			__HAL_GPIO_EXTI_CLEAR_IT(BTN1_Pin); 
@@ -150,14 +157,9 @@ int main(void)
 		
 			write_digit(0x01, array[0]);
 			write_digit(0x02, array[1]);
-			//write_digit(0x02, 0x00);	
 			write_digit(0x04, array[2]);
-			write_digit(0x08, array[3]);------------------------*/
+			write_digit(0x08, array[3]);
 		
-		
-		uint8_t Test[] = "Hello World !!!\r\n"; //Data to send
-		HAL_UART_Transmit(&huart2,Test,sizeof(Test),10);
-		HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -178,12 +180,13 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -360,28 +363,7 @@ void ReadEEPROM(){
 	HAL_GPIO_WritePin(Column3_GPIO_Port, Column3_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(Column4_GPIO_Port, Column4_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(Column5_GPIO_Port, Column5_Pin, GPIO_PIN_RESET);
-	
-	//HAL_GPIO_WritePin(Row0_GPIO_Port, Row0_Pin | Row1_Pin | Row2_Pin | Row3_Pin | Row4_Pin | Row5_Pin | Row6_Pin | Row7_Pin | Row8_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(Column0_GPIO_Port, Column0_Pin | Column1_Pin | Column2_Pin | Column3_Pin | Column4_Pin | Column5_Pin, GPIO_PIN_RESET);
-
-	/*
-		HAL_GPIO_WritePin(GPIOA, Row0_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row2_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row3_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row4_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row5_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row6_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row7_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOA, Row8_Pin, GPIO_PIN_RESET);
-	
-		HAL_GPIO_WritePin(GPIOC, Column0_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, Column1_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, Column2_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, Column3_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, Column4_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOC, Column5_Pin, GPIO_PIN_RESET);*/
-	
+		
 	
 	if ((row & 0b000000001) == 1)
 		HAL_GPIO_WritePin(Row0_GPIO_Port, Row0_Pin, GPIO_PIN_SET);
@@ -415,17 +397,11 @@ void ReadEEPROM(){
 	if (((col & 0b100000) >> 5) == 1)
 		HAL_GPIO_WritePin(Column5_GPIO_Port, Column5_Pin, GPIO_PIN_SET);
 	
-	
-	//HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
-	
 	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
 	
 	data[0] = HAL_GPIO_ReadPin(Data0_GPIO_Port, Data0_Pin);	
 	data[1] = HAL_GPIO_ReadPin(Data1_GPIO_Port, Data1_Pin);	
-	data[2] = HAL_GPIO_ReadPin(Data2_GPIO_Port, Data2_Pin);//---------
-	//data[3] = HAL_GPIO_ReadPin(Data3_GPIO_Port, Data3_Pin);//---------
+	data[2] = HAL_GPIO_ReadPin(Data2_GPIO_Port, Data2_Pin);
 	data[3] = HAL_GPIO_ReadPin(Data3_GPIO_Port, Data3_Pin);
 	data[4] = HAL_GPIO_ReadPin(Data4_GPIO_Port, Data4_Pin);
 	data[5] = HAL_GPIO_ReadPin(Data5_GPIO_Port, Data5_Pin);
@@ -436,9 +412,6 @@ void ReadEEPROM(){
 		HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
 		
 	}
-	
-	//HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 	
 }
 
@@ -454,11 +427,6 @@ void ShowData(){
 		else 	if (data[2*i + 1] == 1 && data[2*i] == 1)
 			array[i] = digits[3];
 	}
-	
-	/*array[0] = 0xC0;
-	array[1] = 0xF9;
-	array[2] = 0xA4;
-	array[3] = 0xB0;*/
 }
 
 void ProgramDelay(int count){
@@ -473,17 +441,12 @@ void ProgramDelay(int count){
 }
 
 void WriteEEPROM(uint8_t wrt){	
-	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(GPIOA, OE_Pin, GPIO_PIN_SET);
 	
+	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_SET);
 	
-	
-	
-	//HAL_GPIO_WritePin(GPIOA, Row0_Pin | Row1_Pin | Row2_Pin | Row3_Pin | Row4_Pin | Row5_Pin | Row6_Pin | Row7_Pin | Row8_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(GPIOC, Column0_Pin | Column1_Pin | Column2_Pin | Column3_Pin | Column4_Pin | Column5_Pin, GPIO_PIN_RESET);
-	
+		
 	HAL_GPIO_WritePin(Row0_GPIO_Port, Row0_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(Row1_GPIO_Port, Row1_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(Row2_GPIO_Port, Row2_Pin, GPIO_PIN_RESET);
@@ -542,6 +505,10 @@ void WriteEEPROM(uint8_t wrt){
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	
 	
+	
+	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_RESET);	
+		
 	/*
 	HAL_GPIO_WritePin(GPIOB, Data0_Pin, GPIO_PIN_SET);	
 	HAL_GPIO_WritePin(GPIOB, Data1_Pin, GPIO_PIN_SET);	
@@ -550,56 +517,23 @@ void WriteEEPROM(uint8_t wrt){
 	HAL_GPIO_WritePin(GPIOB, Data4_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOB, Data5_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOB, Data6_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data7_Pin, GPIO_PIN_SET);
-	*/
+	HAL_GPIO_WritePin(GPIOB, Data7_Pin, GPIO_PIN_SET); */
 	
+	HAL_GPIO_WritePin(GPIOB, Data7_Pin, (wrt & 0b00000001));	
+	HAL_GPIO_WritePin(GPIOB, Data6_Pin, (wrt & 0b00000010) >> 1);	
+  HAL_GPIO_WritePin(GPIOB, Data5_Pin, (wrt & 0b00000100) >> 2);
+	HAL_GPIO_WritePin(GPIOB, Data4_Pin, (wrt & 0b00001000) >> 3);
+	HAL_GPIO_WritePin(GPIOB, Data3_Pin, (wrt & 0b00010000) >> 4);
+	HAL_GPIO_WritePin(GPIOB, Data2_Pin, (wrt & 0b00100000) >> 5);
+	HAL_GPIO_WritePin(GPIOB, Data1_Pin, (wrt & 0b01000000) >> 6);
+	HAL_GPIO_WritePin(GPIOB, Data0_Pin, (wrt & 0b10000000) >> 7);
 	
-	
-	
-	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_RESET);	
-		
-	HAL_GPIO_WritePin(GPIOB, Data0_Pin, GPIO_PIN_SET);	
-	HAL_GPIO_WritePin(GPIOB, Data1_Pin, GPIO_PIN_SET);	
-  HAL_GPIO_WritePin(GPIOB, Data2_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data3_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data4_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data5_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data6_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOB, Data7_Pin, GPIO_PIN_SET);
-	
-	ProgramDelay(10000);
+	//ProgramDelay(10000);
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_SET);
 	
 	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
 
-	//HAL_GPIO_WritePin(GPIOB, WE_Pin, GPIO_PIN_RESET);
-	
-	
-	//HAL_GPIO_WritePin(GPIOA, CE_Pin, GPIO_PIN_RESET);
-	
-	//HAL_GPIO_WritePin(GPIOA, Row0_Pin | Row1_Pin | Row2_Pin | Row3_Pin | Row4_Pin | Row5_Pin | Row6_Pin | Row7_Pin | Row8_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(GPIOC, Column0_Pin | Column1_Pin | Column2_Pin | Column3_Pin | Column4_Pin | Column5_Pin, GPIO_PIN_RESET);
-	//HAL_Delay(10);
-
-	
-	
-	/*
-	HAL_GPIO_WritePin(GPIOB, Data0_Pin, (wrt & 0b00000001));	
-	HAL_GPIO_WritePin(GPIOB, Data1_Pin, (wrt & 0b00000010) >> 1);	
-  HAL_GPIO_WritePin(GPIOB, Data2_Pin, (wrt & 0b00000100) >> 2);
-	HAL_GPIO_WritePin(GPIOB, Data3_Pin, (wrt & 0b00001000) >> 3);
-	HAL_GPIO_WritePin(GPIOB, Data4_Pin, (wrt & 0b00010000) >> 4);
-	HAL_GPIO_WritePin(GPIOB, Data5_Pin, (wrt & 0b00100000) >> 5);
-	HAL_GPIO_WritePin(GPIOB, Data6_Pin, (wrt & 0b01000000) >> 6);
-	HAL_GPIO_WritePin(GPIOB, Data7_Pin, (wrt & 0b10000000) >> 7);*/
-	
-	
-	//HAL_GPIO_WritePin(GPIOA, WE_Pin, GPIO_PIN_RESET);
-
-
-	//HAL_GPIO_WritePin(GPIOB, WE_Pin | CE_Pin, GPIO_PIN_SET);
 	
 	
 	GPIO_InitTypeDef GPIO_InitStruct_;
@@ -612,12 +546,12 @@ void WriteEEPROM(uint8_t wrt){
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	
-  if(GPIO_Pin== BTN1_Pin) {
-		//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+			HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+	
+  if(GPIO_Pin== BTN1_Pin) {
+		
 		col--;
     if (col < 0){
 			col = 63;
@@ -627,29 +561,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 			ReadEEPROM();
 			ShowData();
-		
-		flag_irq = 1;
-    time_irq = HAL_GetTick();
 
-  } else if (GPIO_Pin == BTN2_Pin){
-		//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
-		
-/*		for (int j = 0; j < 512*512; j++){
-			   col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}
-					ReadEEPROM();
-				ProgramDelay(10000);
-					//ShowData();
-		}*/
-		
+	} else if (GPIO_Pin == BTN2_Pin){		
 		
     col++;
     if (col > 63){
@@ -661,34 +574,56 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			ReadEEPROM();
 			ShowData();
 		
-		flag_irq = 1;
-    time_irq = HAL_GetTick();
+
+		
   } else if (GPIO_Pin == B1_Pin){
-		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
-		
-		//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-		WriteEEPROM(0b00000001);
-		
-		//HAL_GPIO_WritePin(GPIOA, WE_Pin, GPIO_PIN_SET);		
-		//HAL_GPIO_WritePin(GPIOA, CE_Pin, GPIO_PIN_SET);
-		//HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_SET);
-		
-		
-		//HAL_GPIO_WritePin(Row1_GPIO_Port, Row0_Pin | Row1_Pin | Row2_Pin | Row3_Pin | Row4_Pin| Row5_Pin | Row6_Pin | Row7_Pin | Row8_Pin, GPIO_PIN_SET);
-		//HAL_GPIO_WritePin(Column1_GPIO_Port, Column0_Pin | Column1_Pin | Column2_Pin | Column3_Pin | Column4_Pin| Column5_Pin, GPIO_PIN_SET);
-		//HAL_GPIO_WritePin(Row1_GPIO_Port, Row1_Pin, GPIO_PIN_SET);
-		
-		
-		flag_irq = 1;
-    time_irq = HAL_GetTick();
+
+		WriteEEPROM(0b11110011);		
+
 	}
 
-
+		flag_irq = 1;
+    time_irq = HAL_GetTick();
 
 	
 }
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+
+	HAL_UART_Transmit_IT(&huart2, buf, packSize);
+	
+	HAL_UART_Receive_IT (&huart2, buf, packSize);
+	/*
+	if(huart == &huart2) {
+		HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
+		
+		if (firstByteWait){
+			offset = 1;
+			firstByteWait = 0;
+			HAL_UART_Receive_IT (&huart2, buf+offset, 1); 
+		}
+		else
+		{
+			if (buf[offset] == 0 ){
+				//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
+				firstByteWait = 1;
+				offset = 0;
+				HAL_UART_Transmit_IT(&huart2, buf, 9);
+				HAL_UART_Receive_IT (&huart2, buf, 1); 
+			}
+			else {
+				offset++;
+				HAL_UART_Receive_IT (&huart2, buf+offset, 1); 
+			}	
+		}
+		
+		//HAL_UART_Receive_IT (&huart2, buf+offset, 1);
+		*/
+			
+		
+
+  
+} 
 /* USER CODE END 4 */
 
 /**
