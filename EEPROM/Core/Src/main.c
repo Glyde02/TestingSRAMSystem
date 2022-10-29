@@ -431,18 +431,6 @@ void ShowData(){
 	}
 }
 
-/*
-void ProgramDelay(int count){
-	int a;
-	int b = 3;
-	while(count > 0)
-	{
-		a = b;
-		a = 0;
-		count--;
-	}
-}*/
-
 void WriteEEPROM(uint8_t wrt){	
 	
 	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
@@ -531,18 +519,7 @@ void WriteEEPROM(uint8_t wrt){
 	HAL_GPIO_WritePin(GPIOB, Data2_Pin, (wrt & 0b00100000) >> 5);
 	HAL_GPIO_WritePin(GPIOB, Data1_Pin, (wrt & 0b01000000) >> 6);
 	HAL_GPIO_WritePin(GPIOB, Data0_Pin, (wrt & 0b10000000) >> 7);
-	
-	/*
-	HAL_GPIO_WritePin(GPIOB, Data0_Pin, buf & 0b000000001);	
-	HAL_GPIO_WritePin(GPIOB, Data1_Pin, buf & 0b0000000);	
-  HAL_GPIO_WritePin(GPIOB, Data2_Pin, buf[2]);
-	HAL_GPIO_WritePin(GPIOB, Data3_Pin, buf[3]);
-	HAL_GPIO_WritePin(GPIOB, Data4_Pin, buf[4]);
-	HAL_GPIO_WritePin(GPIOB, Data5_Pin, buf[5]);
-	HAL_GPIO_WritePin(GPIOB, Data6_Pin, buf[6]);
-	HAL_GPIO_WritePin(GPIOB, Data7_Pin, buf[7]); */
-	
-	//ProgramDelay(10000);
+
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_SET);
 	
@@ -592,7 +569,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		
   } else if (GPIO_Pin == B1_Pin){
 
-		//WriteEEPROM(0b11110011);		
+		WriteEEPROM(0b11111111);		
 
 	}
 
@@ -604,13 +581,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
-	//uint8_t receiveBuf;
-	
-	//receiveBuf = (buf[7] << 7) || (buf[6] << 6) || (buf[5] << 5) || (buf[4] << 4) || (buf[3] << 3) || (buf[2] << 2) || (buf[1] << 1) || buf[0];
-	//if (buf[0] == '1')
-		//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-	//HAL_UART_Transmit_IT(&huart2, &buf, 1);
 	for (int i=0; i<packSize; i++){
 	
 		WriteEEPROM(recvBuf[i]);
@@ -630,34 +600,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
 	
 	HAL_UART_Receive_IT (&huart2, recvBuf, packSize);
-	/*
-	if(huart == &huart2) {
-		HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-		
-		if (firstByteWait){
-			offset = 1;
-			firstByteWait = 0;
-			HAL_UART_Receive_IT (&huart2, buf+offset, 1); 
-		}
-		else
-		{
-			if (buf[offset] == 0 ){
-				//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-				firstByteWait = 1;
-				offset = 0;
-				HAL_UART_Transmit_IT(&huart2, buf, 9);
-				HAL_UART_Receive_IT (&huart2, buf, 1); 
-			}
-			else {
-				offset++;
-				HAL_UART_Receive_IT (&huart2, buf+offset, 1); 
-			}	
-		}
-		
-		//HAL_UART_Receive_IT (&huart2, buf+offset, 1);
-		*/
-			
-		
 
   
 } 

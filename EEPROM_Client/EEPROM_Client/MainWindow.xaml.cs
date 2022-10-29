@@ -28,8 +28,7 @@ namespace EEPROM_Client
         SerialPort ComPort = new SerialPort();
         string InputData = String.Empty;
         int index = 0;
-        string buffer = "";
-        bool isPartial = false;
+        bool isContinue = false;
 
         static int packSize = 64;
         byte[] bytes = new byte[packSize];
@@ -203,7 +202,8 @@ namespace EEPROM_Client
             }
             foreach(byte b in gettingBytes)
             {
-                var inputData = Convert.ToString(b, 2);
+
+                var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
                 Dispatcher.Invoke(() =>
                 {
                     DrawArray(index, 8, inputData);
@@ -212,7 +212,7 @@ namespace EEPROM_Client
                 if (index >= 512 * 512 / (8))
                 {
                     index = 0;
-                    //writeableBitmap = null;
+                    isContinue = false;
                 }
 
                 Dispatcher.Invoke(() =>
@@ -222,8 +222,8 @@ namespace EEPROM_Client
                 });
             }
 
-
-            ComPort.Write(bytes, 0, packSize);
+            if (isContinue)
+                ComPort.Write(bytes, 0, packSize);
 
             //if (buffer.Length == 0)
             //{
@@ -279,6 +279,7 @@ namespace EEPROM_Client
             //ComPort.Write(testStr1);
             
             ComPort.Write(bytes, 0, packSize);
+            isContinue = true;
 
         }
 
