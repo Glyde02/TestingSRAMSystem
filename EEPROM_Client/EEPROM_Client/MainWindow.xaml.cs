@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
@@ -30,7 +31,8 @@ namespace EEPROM_Client
         string buffer = "";
         bool isPartial = false;
 
-        int packSize = 64;
+        static int packSize = 64;
+        byte[] bytes = new byte[packSize];
 
         public string testStr1 = "";
         public string testStr2 = "";
@@ -62,6 +64,7 @@ namespace EEPROM_Client
             {
                 testStr1 += '1';
                 testStr2 += '0';
+                bytes[i] = 0xFF;
             }
 
             //for (int i = 0; i < 512; i++)
@@ -189,60 +192,93 @@ namespace EEPROM_Client
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            InputData = ComPort.ReadExisting();
-
-            if (buffer.Length == 0)
+            //InputData = ComPort.ReadExisting();
+            byte[] gettingBytes = new byte[packSize];
+            int totalBytes = 0;
+            while (totalBytes != packSize)
             {
-                if (InputData.Length < packSize)
-                {
-                    isPartial = true;
-                    buffer += InputData;
-                }
-                else
-                {
-                    isPartial = false;
-                    buffer = InputData;
-                }
+                int bufBytes = ComPort.BytesToRead;
+                totalBytes += bufBytes;
+                ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
             }
-            else
+            foreach(byte b in gettingBytes)
             {
-                buffer += InputData;
-                if (buffer.Length == packSize)
-                    isPartial = false;
-            }
-
-            if (!isPartial)
-            {
-                recvStr1 = InputData;
+                var inputData = Convert.ToString(b, 2);
                 Dispatcher.Invoke(() =>
                 {
-
-                    DrawArray(index, packSize, buffer);
+                    DrawArray(index, 8, inputData);
                 });
                 index++;
-                if (index >= 512*512 / packSize)
+                if (index >= 512 * 512 / (8))
                 {
                     index = 0;
-                    testStr1 = testStr2;
+                    //writeableBitmap = null;
                 }
-                    
+
                 Dispatcher.Invoke(() =>
                 {
-                    txtBox_recieve.AppendText(buffer + "\r\n");
+                    txtBox_recieve.AppendText(inputData + "\r\n");
                     txtBox_recieve.ScrollToEnd();
                 });
-                buffer = "";
-
-
-                ComPort.Write(testStr1);
             }
+
+
+            ComPort.Write(bytes, 0, packSize);
+
+            //if (buffer.Length == 0)
+            //{
+            //    if (InputData.Length < packSize)
+            //    {
+            //        isPartial = true;
+            //        buffer += InputData;
+            //    }
+            //    else
+            //    {
+            //        isPartial = false;
+            //        buffer = InputData;
+            //    }
+            //}
+            //else
+            //{
+            //    buffer += InputData;
+            //    if (buffer.Length == packSize)
+            //        isPartial = false;
+            //}
+
+            //if (!isPartial)
+            //{
+            //    recvStr1 = InputData;
+            //    Dispatcher.Invoke(() =>
+            //    {
+
+            //        DrawArray(index, packSize, buffer);
+            //    });
+            //    index++;
+            //    if (index >= 512*512 / packSize)
+            //    {
+            //        index = 0;
+            //        testStr1 = testStr2;
+            //    }
+
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        txtBox_recieve.AppendText(buffer + "\r\n");
+            //        txtBox_recieve.ScrollToEnd();
+            //    });
+            //    buffer = "";
+
+
+            //    //ComPort.Write(testStr1);
+            //}
 
         }
 
         private void btn_send_Click(object sender, RoutedEventArgs e)
         {
             //ComPort.Write("Hello\0");
-            ComPort.Write(testStr1);
+            //ComPort.Write(testStr1);
+            
+            ComPort.Write(bytes, 0, packSize);
 
         }
 

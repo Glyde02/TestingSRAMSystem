@@ -43,8 +43,11 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-int packSize = 64;
-uint8_t buf[65];
+const int packSize = 64;
+uint8_t recvBuf[64];
+uint8_t sendBuf[64];
+uint8_t buf;
+uint8_t newBuf[8];
 uint8_t firstByteWait=1; 
 int offset = 0;
 
@@ -53,7 +56,7 @@ int time_irq = 0;
 const uint8_t digits[]   = { 0xFF, 0xCF, 0xF9, 0xC9 };
 												//		00 		01		10		11
 uint8_t array[]   = { 0x00, 0x00, 0x00, 0x00 };
-int data[8];
+uint8_t data[8];
 int row = 0;
 int col = 0;
 int time = 0;
@@ -134,7 +137,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
  
-	HAL_UART_Receive_IT (&huart2, buf, packSize);
+	HAL_UART_Receive_IT (&huart2, recvBuf, packSize);
 	
   while (1)
   {				
@@ -343,7 +346,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void ReadEEPROM(){
+uint8_t ReadEEPROM(){
 	
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_SET);
@@ -408,11 +411,10 @@ void ReadEEPROM(){
 	data[6] = HAL_GPIO_ReadPin(Data6_GPIO_Port, Data6_Pin);
 	data[7] = HAL_GPIO_ReadPin(Data7_GPIO_Port, Data7_Pin);
 	
-	if (data[3] == 1){
-		HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
-		
-	}
+	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
 	
+	return (data[7] << 7) + (data[6] << 6) + (data[5] << 5) + (data[4] << 4) + (data[3] << 3) + (data[2] << 2) + (data[1] << 1) + data[0];
 }
 
 void ShowData(){
@@ -429,6 +431,7 @@ void ShowData(){
 	}
 }
 
+/*
 void ProgramDelay(int count){
 	int a;
 	int b = 3;
@@ -438,7 +441,7 @@ void ProgramDelay(int count){
 		a = 0;
 		count--;
 	}
-}
+}*/
 
 void WriteEEPROM(uint8_t wrt){	
 	
@@ -519,6 +522,7 @@ void WriteEEPROM(uint8_t wrt){
 	HAL_GPIO_WritePin(GPIOB, Data6_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOB, Data7_Pin, GPIO_PIN_SET); */
 	
+	
 	HAL_GPIO_WritePin(GPIOB, Data7_Pin, (wrt & 0b00000001));	
 	HAL_GPIO_WritePin(GPIOB, Data6_Pin, (wrt & 0b00000010) >> 1);	
   HAL_GPIO_WritePin(GPIOB, Data5_Pin, (wrt & 0b00000100) >> 2);
@@ -527,6 +531,16 @@ void WriteEEPROM(uint8_t wrt){
 	HAL_GPIO_WritePin(GPIOB, Data2_Pin, (wrt & 0b00100000) >> 5);
 	HAL_GPIO_WritePin(GPIOB, Data1_Pin, (wrt & 0b01000000) >> 6);
 	HAL_GPIO_WritePin(GPIOB, Data0_Pin, (wrt & 0b10000000) >> 7);
+	
+	/*
+	HAL_GPIO_WritePin(GPIOB, Data0_Pin, buf & 0b000000001);	
+	HAL_GPIO_WritePin(GPIOB, Data1_Pin, buf & 0b0000000);	
+  HAL_GPIO_WritePin(GPIOB, Data2_Pin, buf[2]);
+	HAL_GPIO_WritePin(GPIOB, Data3_Pin, buf[3]);
+	HAL_GPIO_WritePin(GPIOB, Data4_Pin, buf[4]);
+	HAL_GPIO_WritePin(GPIOB, Data5_Pin, buf[5]);
+	HAL_GPIO_WritePin(GPIOB, Data6_Pin, buf[6]);
+	HAL_GPIO_WritePin(GPIOB, Data7_Pin, buf[7]); */
 	
 	//ProgramDelay(10000);
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
@@ -578,7 +592,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		
   } else if (GPIO_Pin == B1_Pin){
 
-		WriteEEPROM(0b11110011);		
+		//WriteEEPROM(0b11110011);		
 
 	}
 
@@ -590,9 +604,32 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
-	HAL_UART_Transmit_IT(&huart2, buf, packSize);
+	//uint8_t receiveBuf;
 	
-	HAL_UART_Receive_IT (&huart2, buf, packSize);
+	//receiveBuf = (buf[7] << 7) || (buf[6] << 6) || (buf[5] << 5) || (buf[4] << 4) || (buf[3] << 3) || (buf[2] << 2) || (buf[1] << 1) || buf[0];
+	//if (buf[0] == '1')
+		//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
+	//HAL_UART_Transmit_IT(&huart2, &buf, 1);
+	for (int i=0; i<packSize; i++){
+	
+		WriteEEPROM(recvBuf[i]);
+		sendBuf[i] = ReadEEPROM();
+	
+		col++;
+    if (col > 63){
+			col = 0;
+			row++;
+			if (row > 511)
+				row = 0;
+		}		
+	
+	}
+	
+		
+	HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
+	
+	HAL_UART_Receive_IT (&huart2, recvBuf, packSize);
 	/*
 	if(huart == &huart2) {
 		HAL_GPIO_WritePin(GPIOA, LD2_Pin, GPIO_PIN_SET);
