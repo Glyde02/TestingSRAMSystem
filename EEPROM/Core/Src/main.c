@@ -581,9 +581,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
+	int oldCol = col;
+	int oldRow = row;
+	
 	for (int i=0; i<packSize; i++){
 	
 		WriteEEPROM(recvBuf[i]);
+		//sendBuf[i] = ReadEEPROM();
+	
+		col++;
+    if (col > 63){
+			col = 0;
+			row++;
+			if (row > 511)
+				row = 0;
+		}		
+	
+	}
+	
+	col = oldCol;
+	row = oldRow;
+	for (int i=0; i<packSize; i++){
+	
 		sendBuf[i] = ReadEEPROM();
 	
 		col++;
