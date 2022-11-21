@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,13 +28,30 @@ namespace EEPROM_Client
     /// </summary>
     public partial class MainWindow : Window
     {
+        enum Commands
+        {
+            Write0 = 0b00000001,
+            Write1 = 0b00000010,
+            Read = 0b00000011,
+            SavePosition = 0b00000100,
+            SetOldPosition = 0b00000101,
+            SetNullPosition = 0b10000000
+        }
+
         SerialPort ComPort = new SerialPort();
         string InputData = String.Empty;
         int index = 0;
         bool isContinue = false;
+        volatile bool isReading = false;
 
         static int packSize = 64;
-        byte[] bytes = new byte[packSize];
+        byte[] bytes0 = new byte[packSize];
+        byte[] bytes1 = new byte[packSize];
+        byte[] gettingBytes = new byte[packSize];
+
+        byte[] outFile0 = new byte[512 * 512];
+        byte[] outFile1 = new byte[512 * 512];
+
 
         public string testStr1 = "";
         public string testStr2 = "";
@@ -63,7 +83,8 @@ namespace EEPROM_Client
             {
                 testStr1 += '1';
                 testStr2 += '0';
-                bytes[i] = 0xFF;
+                bytes0[i] = 0x00;
+                bytes1[i] = 0xFF;
             }
 
             //for (int i = 0; i < 512; i++)
@@ -114,6 +135,18 @@ namespace EEPROM_Client
                             color_data |= 0 << 8;   // G
                             color_data |= 0 << 0;   // B
                         }
+                        else if (memoryArray[j] == '2')
+                        {
+                            color_data = 0 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 255 << 0;   // B
+                        }
+                        else if (memoryArray[j] == '3')
+                        {
+                            color_data = 0 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 255 << 0;   // B
+                        }
                         else
                         {
                             color_data = 255 << 16; // R
@@ -132,11 +165,6 @@ namespace EEPROM_Client
                 }
                 j++;
             }
-
-        }
-
-        public void GetPorts()
-        {
 
         }
 
@@ -176,7 +204,7 @@ namespace EEPROM_Client
                 ComPort.StopBits = StopBits.One;
                 ComPort.Parity = Parity.None;
                 ComPort.Handshake = Handshake.None;
-                ComPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                //ComPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
                 ComPort.Open();
 
             }
@@ -191,39 +219,80 @@ namespace EEPROM_Client
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            //InputData = ComPort.ReadExisting();
-            byte[] gettingBytes = new byte[packSize];
+            gettingBytes = new byte[packSize];
             int totalBytes = 0;
             while (totalBytes != packSize)
             {
                 int bufBytes = ComPort.BytesToRead;
-                totalBytes += bufBytes;
-                ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
+                if (bufBytes > 0)
+                {
+                    totalBytes += bufBytes;
+                    ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
+                }
             }
-            foreach(byte b in gettingBytes)
+            isReading = true;
+            if (totalBytes < packSize)
             {
+                throw new Exception();
+            }
 
-                var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
-                Dispatcher.Invoke(() =>
+            /*
+
+            //InputData = ComPort.ReadExisting();
+            
+
+                if (isContinue)
+                    ComPort.Write(new byte[] { 0b00000010 }, 0, 1);
+
+            }
+            else
+            {
+                for (int i = 0; i < packSize; i++)
                 {
-                    DrawArray(index, 8, inputData);
-                });
-                index++;
-                if (index >= 512 * 512 / (8))
-                {
-                    index = 0;
-                    isContinue = false;
+                    var inputData1 = Convert.ToString(gettingBytes1[i], 2).PadLeft(8, '0');
+
+                    string bufByteStr = "";
+                    for (int j = 0; j < 8; j++)
+                    {
+                        if (inputData1[j] == '1')
+                        {
+                            bufByteStr += "1";
+                            //write ok
+                            //green
+                        }
+                        else if (inputData1[j] == '0')
+                        {
+
+                            bufByteStr += "0";
+                            //damage on 1
+                            //blue
+                        }
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        DrawArray(index, 8, bufByteStr);
+                    });
+                    index++;
+                    if (index >= 512 * 512 / (8))
+                    {
+                        index = 0;
+                        isContinue = false;
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        txtBox_recieve.AppendText(bufByteStr + "\r\n");
+                        txtBox_recieve.ScrollToEnd();
+                    });
+
                 }
 
-                Dispatcher.Invoke(() =>
-                {
-                    txtBox_recieve.AppendText(inputData + "\r\n");
-                    txtBox_recieve.ScrollToEnd();
-                });
-            }
+                if (isContinue)
+                    ComPort.Write(new byte[] { 0b00000011 }, 0, 1);
 
-            if (isContinue)
-                ComPort.Write(bytes, 0, packSize);
+            }
+            */
 
             //if (buffer.Length == 0)
             //{
@@ -273,16 +342,351 @@ namespace EEPROM_Client
 
         }
 
-        private void btn_send_Click(object sender, RoutedEventArgs e)
+        private void ClearBTMP()
         {
-            //ComPort.Write("Hello\0");
-            //ComPort.Write(testStr1);
-            
-            ComPort.Write(bytes, 0, packSize);
-            isContinue = true;
+            byte[] colorData = new byte[4 * 512 * 512];
+            for (int i = 0; i < colorData.Length; i++)
+            {
+                colorData[i] = 0;
+            }
+
+            Int32Rect rect = new Int32Rect(0, 0, writeableBitmap.PixelWidth, writeableBitmap.PixelHeight);
+            int stride = (writeableBitmap.PixelWidth * writeableBitmap.Format.BitsPerPixel) / 8;
+            writeableBitmap.WritePixels(rect, colorData, stride, 0);
 
         }
 
+        private void btn_send_Click(object sender, RoutedEventArgs e)
+        {
+            ClearBTMP();
 
+            ComPort.Write(new byte[] { (byte)Commands.SetNullPosition }, 0, 1);
+            Thread myThread = new Thread(MarchingTest);
+            myThread.Start();
+            Task tsk = new Task(MarchingTest);
+            tsk.Start();
+            
+            isContinue = true;
+            
+
+        }
+
+        void MarchingTest()
+        {
+            for (int k = 0; k < 512 * 512 / (8 * packSize); k++)
+            {
+
+                isReading = false;
+                ComPort.Write(new byte[] { (byte)Commands.SavePosition }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.Write0 }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.SetOldPosition }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.Read }, 0, 1);
+                while (!isReading)
+                {
+                }
+                byte[] gettingBytes1 = new byte[packSize];
+                gettingBytes.CopyTo(gettingBytes1, 0);
+
+
+                isReading = false;
+                ComPort.Write(new byte[] { (byte)Commands.SetOldPosition }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.Write1 }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.SetOldPosition }, 0, 1);
+                ComPort.Write(new byte[] { (byte)Commands.Read }, 0, 1);
+                while (!isReading)
+                {
+                }
+                byte[] gettingBytes2 = new byte[packSize];
+                gettingBytes.CopyTo(gettingBytes2, 0);
+
+
+                for (int i = 0; i < packSize; i++)
+                {
+                    var inputData1 = Convert.ToString(gettingBytes1[i], 2).PadLeft(8, '0');
+                    var inputData2 = Convert.ToString(gettingBytes2[i], 2).PadLeft(8, '0');
+
+                    string bufByteStr = "";
+                    for (int j = 0; j < 8; j++)
+                    {
+                        if (inputData1[j] == '0' && inputData2[j] == '1')
+                        {
+                            bufByteStr += "1";
+                            //write ok
+                            //green
+                        }
+                        else if (inputData1[j] == '1' && inputData2[j] == '1')
+                        {
+
+                            bufByteStr += "2";
+                            //damage on 1
+                            //blue
+                        }
+                        else if (inputData1[j] == '0' && inputData2[j] == '0')
+                        {
+
+                            bufByteStr += "3";
+                            //damage on 0
+                            //blue
+                        }
+                        else //if (inputData1[j] == '1' && inputData2[j] == '0')
+                        {
+
+                            bufByteStr += "0";
+                            //damage on inverse
+                            //red
+                        }
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        DrawArray(index, 8, bufByteStr);
+                    });
+                    index++;
+                    if (index >= 512 * 512 / (8))
+                    {
+                        index = 0;
+                        isContinue = false;
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        txtBox_recieve.AppendText(bufByteStr + "\r\n");
+                        txtBox_recieve.ScrollToEnd();
+                    });
+
+                }
+            }
+
+        }
+        void Read(object command)
+        {
+            for (int i = 0; i < 512 * 512 / (packSize * 8); i++)
+            {
+                isReading = false;
+                ComPort.Write((byte[])command, 0, 1);
+
+                while (!isReading)
+                {
+
+                }
+
+                for (int j = 0; j < packSize; j++)
+                {
+                    var inputData1 = Convert.ToString(gettingBytes[j], 2).PadLeft(8, '0');
+
+                    string bufByteStr = "";
+                    for (int k = 0; k < 8; k++)
+                    {
+                        if (inputData1[k] == '1')
+                        {
+                            bufByteStr += "1";
+                            //reading 1
+                            //green
+                        }
+                        else if (inputData1[k] == '0')
+                        {
+
+                            bufByteStr += "0";
+                            //reading 0
+                            //blue
+                        }
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        DrawArray(index, 8, bufByteStr);
+                    });
+                    index++;
+                    if (index >= 512 * 512 / (8))
+                    {
+                        index = 0;
+                        isContinue = false;
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        txtBox_recieve.AppendText(bufByteStr + "\r\n");
+                        txtBox_recieve.ScrollToEnd();
+                    });
+
+                }
+
+            }
+
+
+        }
+
+        //Commands
+        //0b00000001 - write all 1
+        //0b00000010 - write all 0
+        //0b00000011 - read EEPROM
+        //
+
+        private void btn_SaveLogs_Click(object sender, RoutedEventArgs e)
+        {
+            File.WriteAllBytes(txtBx_LogName.Text + "_0.byte", outFile0);
+            File.WriteAllBytes(txtBx_LogName.Text + "_1.byte", outFile1);
+        }
+
+        private void btn_Read_Click(object sender, RoutedEventArgs e)
+        {
+
+            ClearBTMP();
+            ComPort.Write(new byte[] { 0b10000000}, 0, 1);
+
+            Thread thread = new Thread(Read);
+            thread.Start(new byte[] { 0b00000011 });
+
+            isContinue = true;
+        }
+
+        private void btn_Write1_Click(object sender, RoutedEventArgs e)
+        {
+            ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
+
+            //for (int i = 0; i < 512 * 512 / (packSize * 8); i++)
+            //{
+            //    isReading = false;
+            //    ComPort.Write(new byte[] { 0b00000100 }, 0, 1);
+            //    ComPort.Write(new byte[] { 0b00000010 }, 0, 1);
+            //    ComPort.Write(new byte[] { 0b00000101 }, 0, 1);
+            //    ComPort.Write(new byte[] { 0b00000011 }, 0, 1);
+            //    //ComPort.Write((byte[])command, 0, 1);
+
+            //    while (!isReading)
+            //    {
+
+            //    }
+
+            //    for (int j = 0; j < packSize; j++)
+            //    {
+            //        var inputData1 = Convert.ToString(gettingBytes[j], 2).PadLeft(8, '0');
+
+            //        string bufByteStr = "";
+            //        for (int k = 0; k < 8; k++)
+            //        {
+            //            if (inputData1[k] == '1')
+            //            {
+            //                bufByteStr += "1";
+            //                //reading 1
+            //                //green
+            //            }
+            //            else if (inputData1[k] == '0')
+            //            {
+
+            //                bufByteStr += "0";
+            //                //reading 0
+            //                //blue
+            //            }
+            //        }
+
+            //        Dispatcher.Invoke(() =>
+            //        {
+            //            DrawArray(index, 8, bufByteStr);
+            //        });
+            //        index++;
+            //        if (index >= 512 * 512 / (8))
+            //        {
+            //            index = 0;
+            //            isContinue = false;
+            //        }
+
+            //        Dispatcher.Invoke(() =>
+            //        {
+            //            txtBox_recieve.AppendText(bufByteStr + "\r\n");
+            //            txtBox_recieve.ScrollToEnd();
+            //        });
+
+            //    }
+
+            //}
+
+            Task tsk = new Task(Send);
+            tsk.Start();
+            //Thread thread = new Thread(Send);
+            //thread.Start();
+            //thread.Join();
+
+        }
+
+        void Send()
+        {
+            for (int i = 0; i < 512 * 512 / (packSize * 8); i++)
+            {
+                //if(i > 10)
+                //    throw new Exception();
+                isReading = false;
+
+                byte[] bt = new byte[1];
+                ComPort.Write(new byte[] { 0b00000100 }, 0, 1);
+                bt[0] = (byte)ComPort.ReadByte();
+                ComPort.Write(new byte[] { 0b00000010 }, 0, 1);
+                bt[0] = (byte)ComPort.ReadByte();
+                ComPort.Write(new byte[] { 0b00000101 }, 0, 1);
+                bt[0] = (byte)ComPort.ReadByte();
+                ComPort.Write(new byte[] { 0b00000011 }, 0, 1);
+
+
+
+
+                var buf = new byte[packSize];
+                int totalBytes = 0;
+                while (totalBytes != packSize)
+                {
+                    int bufBytes = ComPort.BytesToRead;
+                    if (bufBytes > 0)
+                    {
+                        totalBytes += bufBytes;
+                        ComPort.Read(buf, totalBytes - bufBytes, bufBytes);
+                    }
+                }
+
+                
+                for (int j = 0; j < packSize; j++)
+                {
+                    var inputData1 = Convert.ToString(buf[j], 2).PadLeft(8, '0');
+
+                    string bufByteStr = "";
+                    for (int k = 0; k < 8; k++)
+                    {
+                        if (inputData1[k] == '1')
+                        {
+                            bufByteStr += "1";
+                            //reading 1
+                            //green
+                        }
+                        else if (inputData1[k] == '0')
+                        {
+
+                            bufByteStr += "0";
+                            //reading 0
+                            //blue
+                        }
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        DrawArray(index, 8, bufByteStr);
+                    });
+                    index++;
+                    if (index >= 512 * 512 / (8))
+                    {
+                        index = 0;
+                        isContinue = false;
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        txtBox_recieve.AppendText(bufByteStr + "\r\n");
+                        txtBox_recieve.ScrollToEnd();
+                    });
+
+                }
+
+            }
+
+            throw new Exception();
+
+        }
     }
 }

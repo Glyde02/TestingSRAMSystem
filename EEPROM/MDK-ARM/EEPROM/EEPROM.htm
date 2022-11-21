@@ -3,11 +3,11 @@
 <title>Static Call Graph - [EEPROM\EEPROM.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image EEPROM\EEPROM.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Thu Nov  3 10:36:32 2022
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6180002: Last Updated: Fri Nov 11 16:53:09 2022
 <BR><P>
-<H3>Maximum Stack Usage =        160 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        156 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
-USART2_IRQHandler &rArr; HAL_UART_IRQHandler &rArr; UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
+__rt_entry_main &rArr; main &rArr; HAL_UART_Init &rArr; HAL_UART_MspInit &rArr; HAL_GPIO_Init
 <P>
 <H3>
 Functions with no stack information
@@ -577,7 +577,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[59]"></a>HAL_UART_IRQHandler</STRONG> (Thumb, 620 bytes, Stack size 24 bytes, stm32f1xx_hal_uart.o(.text.HAL_UART_IRQHandler))
-<BR><BR>[Stack]<UL><LI>Max Depth = 160<LI>Call Chain = HAL_UART_IRQHandler &rArr; UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
+<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = HAL_UART_IRQHandler &rArr; UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UARTEx_RxEventCallback
 <LI><a href="#[5d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_DMA_Abort_IT
@@ -614,8 +614,8 @@ Global Symbols
 <LI><a href="#[41]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[66]"></a>HAL_UART_RxCpltCallback</STRONG> (Thumb, 168 bytes, Stack size 24 bytes, main.o(.text.HAL_UART_RxCpltCallback))
-<BR><BR>[Stack]<UL><LI>Max Depth = 132<LI>Call Chain = HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
+<P><STRONG><a name="[66]"></a>HAL_UART_RxCpltCallback</STRONG> (Thumb, 256 bytes, Stack size 16 bytes, main.o(.text.HAL_UART_RxCpltCallback))
+<BR><BR>[Stack]<UL><LI>Max Depth = 124<LI>Call Chain = HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit_IT
 <LI><a href="#[4f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;WriteEEPROM
@@ -657,7 +657,7 @@ Global Symbols
 <P><STRONG><a name="[8]"></a>PendSV_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.PendSV_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xb.o(RESET)
 </UL>
-<P><STRONG><a name="[4d]"></a>ReadEEPROM</STRONG> (Thumb, 752 bytes, Stack size 24 bytes, main.o(.text.ReadEEPROM))
+<P><STRONG><a name="[4d]"></a>ReadEEPROM</STRONG> (Thumb, 784 bytes, Stack size 24 bytes, main.o(.text.ReadEEPROM))
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = ReadEEPROM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_ReadPin
@@ -670,7 +670,7 @@ Global Symbols
 <P><STRONG><a name="[6]"></a>SVC_Handler</STRONG> (Thumb, 2 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.SVC_Handler))
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xb.o(RESET)
 </UL>
-<P><STRONG><a name="[4e]"></a>ShowData</STRONG> (Thumb, 174 bytes, Stack size 0 bytes, main.o(.text.ShowData))
+<P><STRONG><a name="[4e]"></a>ShowData</STRONG> (Thumb, 206 bytes, Stack size 0 bytes, main.o(.text.ShowData))
 <BR><BR>[Called By]<UL><LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_EXTI_Callback
 </UL>
 
@@ -683,7 +683,7 @@ Global Symbols
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xb.o(.text)
 </UL>
 <P><STRONG><a name="[30]"></a>USART2_IRQHandler</STRONG> (Thumb, 12 bytes, Stack size 0 bytes, stm32f1xx_it.o(.text.USART2_IRQHandler))
-<BR><BR>[Stack]<UL><LI>Max Depth = 160<LI>Call Chain = USART2_IRQHandler &rArr; HAL_UART_IRQHandler &rArr; UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
+<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = USART2_IRQHandler &rArr; HAL_UART_IRQHandler &rArr; UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[59]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_IRQHandler
 </UL>
@@ -706,7 +706,7 @@ Global Symbols
 <LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_EXTI_Callback
 </UL>
 
-<P><STRONG><a name="[41]"></a>main</STRONG> (Thumb, 680 bytes, Stack size 64 bytes, main.o(.text.main))
+<P><STRONG><a name="[41]"></a>main</STRONG> (Thumb, 664 bytes, Stack size 64 bytes, main.o(.text.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 156<LI>Call Chain = main &rArr; HAL_UART_Init &rArr; HAL_UART_MspInit &rArr; HAL_GPIO_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[50]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -736,7 +736,7 @@ Global Symbols
 Local Symbols
 </H3>
 <P><STRONG><a name="[5a]"></a>UART_Receive_IT</STRONG> (Thumb, 182 bytes, Stack size 4 bytes, stm32f1xx_hal_uart.o(.text.UART_Receive_IT))
-<BR><BR>[Stack]<UL><LI>Max Depth = 136<LI>Call Chain = UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
+<BR><BR>[Stack]<UL><LI>Max Depth = 128<LI>Call Chain = UART_Receive_IT &rArr; HAL_UART_RxCpltCallback &rArr; WriteEEPROM &rArr; HAL_GPIO_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UARTEx_RxEventCallback
 <LI><a href="#[66]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_RxCpltCallback

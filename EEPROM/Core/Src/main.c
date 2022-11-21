@@ -44,8 +44,13 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 
 const int packSize = 64;
+uint8_t command;
 uint8_t recvBuf[64];
 uint8_t sendBuf[64];
+
+uint8_t firstRead[64];
+uint8_t secondRead[64];
+
 uint8_t buf;
 uint8_t newBuf[8];
 uint8_t firstByteWait=1; 
@@ -59,6 +64,9 @@ uint8_t array[]   = { 0x00, 0x00, 0x00, 0x00 };
 uint8_t data[8];
 int row = 0;
 int col = 0;
+int oldCol = 0;
+int oldRow = 0;
+
 int time = 0;
 /* USER CODE END PV */
 
@@ -137,7 +145,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
  
-	HAL_UART_Receive_IT (&huart2, recvBuf, packSize);
+	HAL_UART_Receive_IT (&huart2, &command, 1);
 	
   while (1)
   {				
@@ -537,7 +545,7 @@ void WriteEEPROM(uint8_t wrt){
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-			HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
 	
@@ -579,47 +587,82 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	
 }
 
+void inc_Addr(){
+	col++;
+	if (col > 63){
+		col = 0;
+		row++;
+		if (row > 511)
+			row = 0;
+	}
+}
+
+void dec_Addr(){
+	col--;
+	if (col < 0){
+		col = 63;
+		row--;
+		if (row < 0)
+			row = 511;
+	}
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
-	int oldCol = col;
-	int oldRow = row;
-	
-	for (int i=0; i<packSize; i++){
-	
-		WriteEEPROM(recvBuf[i]);
-		//sendBuf[i] = ReadEEPROM();
-	
-		col++;
-    if (col > 63){
-			col = 0;
-			row++;
-			if (row > 511)
-				row = 0;
-		}		
-	
-	}
-	
-	col = oldCol;
-	row = oldRow;
-	for (int i=0; i<packSize; i++){
-	
-		sendBuf[i] = ReadEEPROM();
-	
-		col++;
-    if (col > 63){
-			col = 0;
-			row++;
-			if (row > 511)
-				row = 0;
-		}		
-	
-	}
-	
+	switch (command){
+		case 0b00000001:{ //Write 0
+			
+			for (int i=0; i<packSize; i++){
+				WriteEEPROM(0b00000000);
+				inc_Addr();			
+			}
+			
+			break;
+		};
 		
-	HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
+		case 0b00000010:{ //Write 1
+			
+			for (int i=0; i<packSize; i++){
+				WriteEEPROM(0b11111111);
+				inc_Addr();			
+			}
+			break;
+		};
+		
+		case 0b00000011:{ //Read memory
+			
+			for (int i=0; i<packSize; i++){
+				sendBuf[i] = ReadEEPROM();
+				inc_Addr();
+			}
+			HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
+			break;
+		};
+		
+		case 0b00000100:{ //Save position
+			
+			oldCol = col;
+			oldRow = row;
+			
+			break;
+		};
+		
+		case 0b00000101:{ //Set old position
+			
+			col = oldCol;
+			row = oldRow;
+			
+			break;
+		};
+		
+		case 0b10000000:{
+			col = 0;
+			row = 0;
+			break;
+		};
+	}
 	
-	HAL_UART_Receive_IT (&huart2, recvBuf, packSize);
-
+	HAL_UART_Receive_IT (&huart2, &command, 1);
   
 } 
 /* USER CODE END 4 */

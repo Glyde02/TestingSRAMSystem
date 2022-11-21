@@ -1,0 +1,19 @@
+﻿<Window x:Class="Comparator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Comparator"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="667" Width="1105">
+    <Grid>
+        <Image x:Name="img_first" HorizontalAlignment="Left" Height="512" Margin="27,26,0,0" VerticalAlignment="Top" Width="512"/>
+        <Image x:Name="img_second" HorizontalAlignment="Left" Height="512" Margin="571,26,0,0" VerticalAlignment="Top" Width="512"/>
+        <Button x:Name="btn_Show" Content="Button" HorizontalAlignment="Center" Margin="0,580,0,0" VerticalAlignment="Top" Height="40" Width="116" Click="btn_Show_Click"/>
+        <TextBox x:Name="txtBx_FileFirst" HorizontalAlignment="Left" Margin="48,582,0,0" TextWrapping="Wrap" Text="log1" VerticalAlignment="Top" Width="133" Height="18"/>
+        <Button x:Name="btn_OpenFirst" Content="Open first file" HorizontalAlignment="Left" Margin="211,581,0,0" VerticalAlignment="Top" Width="89" Click="btn_OpenFirst_Click"/>
+        <TextBox x:Name="txtBx_FileSecond" HorizontalAlignment="Left" Margin="693,582,0,0" TextWrapping="Wrap" Text="log2" VerticalAlignment="Top" Width="120"/>
+        <Button x:Name="btn_OpenSecond" Content="Open second file" HorizontalAlignment="Left" Margin="857,582,0,0" VerticalAlignment="Top" Click="btn_OpenSecond_Click"/>
+
+    </Grid>
+</Window>
