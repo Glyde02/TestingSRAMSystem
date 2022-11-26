@@ -25,6 +25,15 @@ namespace EEPROM_Client
     /// </summary>
     public partial class MainWindow : Window
     {
+        enum Commands
+        {
+            Read = 0b00000001,
+            Write0 = 0b00000010,
+            Write1 = 0b00000011
+        }
+
+        Commands command = Commands.Read;
+
         SerialPort ComPort = new SerialPort();
         string InputData = String.Empty;
         int index = 0;
@@ -36,6 +45,8 @@ namespace EEPROM_Client
         public string testStr1 = "";
         public string testStr2 = "";
         public string recvStr1 = "";
+
+        
 
         private WriteableBitmap writeableBitmap;
 
@@ -191,6 +202,88 @@ namespace EEPROM_Client
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
+            int totalBytes = 0;
+            byte[] gettingBytes = new byte[packSize];
+
+
+            switch (command)
+            {
+                case Commands.Read:
+
+                    while (totalBytes != packSize)
+                    {
+                        int bufBytes = ComPort.BytesToRead;
+                        totalBytes += bufBytes;
+                        ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
+                    }
+
+                    foreach (byte b in gettingBytes)
+                    {
+
+                        var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
+                        Dispatcher.Invoke(() =>
+                        {
+                            DrawArray(index, 8, inputData);
+                        });
+                        index++;
+                        if (index >= 512 * 512 / (8))
+                        {
+                            index = 0;
+                            isContinue = false;
+                        }
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            txtBox_recieve.AppendText(inputData + "\r\n");
+                            txtBox_recieve.ScrollToEnd();
+                        });
+                    }
+
+                    if (isContinue)
+                        ComPort.Write(new byte[] { (byte)command }, 0, 1);
+
+                    break;
+                case Commands.Write0:
+                    
+                    break;
+                case Commands.Write1:
+
+                    while (totalBytes != packSize)
+                    {
+                        int bufBytes = ComPort.BytesToRead;
+                        totalBytes += bufBytes;
+                        ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
+                    }
+
+                    foreach (byte b in gettingBytes)
+                    {
+
+                        var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
+                        Dispatcher.Invoke(() =>
+                        {
+                            DrawArray(index, 8, inputData);
+                        });
+                        index++;
+                        if (index >= 512 * 512 / (8))
+                        {
+                            index = 0;
+                            isContinue = false;
+                        }
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            txtBox_recieve.AppendText(inputData + "\r\n");
+                            txtBox_recieve.ScrollToEnd();
+                        });
+                    }
+                    if (isContinue)
+                        ComPort.Write(new byte[] { (byte)command }, 0, 1);
+                    break;
+            }
+
+
+       
+            /*
             //InputData = ComPort.ReadExisting();
             byte[] gettingBytes = new byte[packSize];
             int totalBytes = 0;
@@ -223,8 +316,8 @@ namespace EEPROM_Client
             }
 
             if (isContinue)
-                ComPort.Write(bytes, 0, packSize);
-
+                ComPort.Write(new byte[] { (byte)command }, 0, packSize);
+            */
             //if (buffer.Length == 0)
             //{
             //    if (InputData.Length < packSize)
@@ -275,14 +368,51 @@ namespace EEPROM_Client
 
         private void btn_send_Click(object sender, RoutedEventArgs e)
         {
-            //ComPort.Write("Hello\0");
-            //ComPort.Write(testStr1);
-            
-            ComPort.Write(bytes, 0, packSize);
+            index = 0;
+
+            command = Commands.Read;
+            ClearBTMP();
+            ComPort.Write(new byte[] { (byte)command }, 0, 1);
+
+            //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
+            //command = Commands.Write1;
             isContinue = true;
 
         }
 
+        private void btn_Write0_Click(object sender, RoutedEventArgs e)
+        {
+            command = Commands.Write0;
+            index = 0;
+            ClearBTMP();
+            ComPort.Write(new byte[] { (byte)command }, 0, 1);
+            //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
+            //command = Commands.Write1;
+            isContinue = true;
+        }
 
+        private void ClearBTMP()
+        {
+            byte[] colorData = new byte[4 * 512 * 512];
+            for (int i = 0; i < colorData.Length; i++)
+            {
+                colorData[i] = 0;
+            }
+
+            Int32Rect rect = new Int32Rect(0, 0, writeableBitmap.PixelWidth, writeableBitmap.PixelHeight);
+            int stride = (writeableBitmap.PixelWidth * writeableBitmap.Format.BitsPerPixel) / 8;
+            writeableBitmap.WritePixels(rect, colorData, stride, 0);
+        }
+
+        private void btn_Write1_Click(object sender, RoutedEventArgs e)
+        {
+            command = Commands.Write1;
+            index = 0;
+            ClearBTMP();
+            ComPort.Write(new byte[] { (byte)command }, 0, 1);
+            //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
+            //command = Commands.Write1;
+            isContinue = true;
+        }
     }
 }
