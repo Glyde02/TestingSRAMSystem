@@ -11,12 +11,13 @@
         <Button Name="btn_getPorts"  Content="Get all ports" HorizontalAlignment="Left" Margin="28,38,0,0" VerticalAlignment="Top" Height="22" Width="120" Click="btn_getPorts_Click"/>
         <ComboBox Name="cb_ports" HorizontalAlignment="Left" Margin="28,94,0,0" VerticalAlignment="Top" Width="120"/>
         <Button Name="btn_start_stop_connection" Content="Start connection" HorizontalAlignment="Left" Margin="28,152,0,0" VerticalAlignment="Top" Width="120" Click="btn_start_stop_connection_Click"/>
-        <TextBox x:Name="txtBox_recieve" HorizontalAlignment="Left" Margin="28,203,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="184" Height="258"/>
-        <TextBox x:Name="txtBox_send" HorizontalAlignment="Left" Margin="28,504,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="184" Height="90"/>
-        <Button x:Name="btn_send" Content="Read Memory" HorizontalAlignment="Left" Margin="28,633,0,0" VerticalAlignment="Top" Width="184" Click="btn_send_Click"/>
+        <TextBox x:Name="txtBox_recieve" HorizontalAlignment="Left" Margin="28,203,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="184" Height="223"/>
+        <TextBox x:Name="txtBox_send" HorizontalAlignment="Left" Margin="28,470,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="184" Height="90"/>
+        <Button x:Name="btn_send" Content="Read Memory" HorizontalAlignment="Left" Margin="28,580,0,0" VerticalAlignment="Top" Width="184" Click="btn_send_Click"/>
         <Image Name="imgMemoryArray" HorizontalAlignment="Left" Height="512" Margin="355,38,0,0" VerticalAlignment="Top" Width="512"/>
-        <Button x:Name="btn_Write0" Content="Write 0 " HorizontalAlignment="Left" Margin="28,673,0,0" VerticalAlignment="Top" Width="184" Click="btn_Write0_Click"/>
-        <Button x:Name="btn_Write1" Content="Write 1" HorizontalAlignment="Left" Margin="28,713,0,0" VerticalAlignment="Top" Width="184" Click="btn_Write1_Click"/>
+        <Button x:Name="btn_Write0" Content="Write 0 " HorizontalAlignment="Left" Margin="28,620,0,0" VerticalAlignment="Top" Width="184" Click="btn_Write0_Click"/>
+        <Button x:Name="btn_Write1" Content="Write 1" HorizontalAlignment="Left" Margin="28,660,0,0" VerticalAlignment="Top" Width="184" Click="btn_Write1_Click"/>
+        <Button x:Name="btn_Marching" Content="Marching Test" HorizontalAlignment="Left" Margin="28,713,0,0" VerticalAlignment="Top" Width="184" Click="btn_Marching_Click"/>
 
     </Grid>
 </Window>

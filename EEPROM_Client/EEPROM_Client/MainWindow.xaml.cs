@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,11 @@ namespace EEPROM_Client
         {
             Read = 0b00000001,
             Write0 = 0b00000010,
-            Write1 = 0b00000011
+            Write1 = 0b00000011,
+            SavePosition = 0b00001000,
+            LoadPosition = 0b00001100,
+            ClearPosition = 0b00001110,
+            Marching = 0b10000000
         }
 
         Commands command = Commands.Read;
@@ -38,9 +43,13 @@ namespace EEPROM_Client
         string InputData = String.Empty;
         int index = 0;
         bool isContinue = false;
+        bool isFirst = true;
 
         static int packSize = 64;
         byte[] bytes = new byte[packSize];
+        byte[] bytes0 = new byte[packSize];
+        byte[] bytes1 = new byte[packSize];
+        int offset;
 
         public string testStr1 = "";
         public string testStr2 = "";
@@ -145,7 +154,66 @@ namespace EEPROM_Client
             }
 
         }
+        public void DrawArrayMarching(int index, int size, string memoryArray)
+        {
+            int j = 0;
+            for (int i = index * size; i < index * size + memoryArray.Length; i++)
+            {
 
+                int column = i % 512;
+                int row = (int)(i / 512);
+
+                try
+                {
+                    unsafe
+                    {
+                        writeableBitmap.Lock();
+
+                        IntPtr pBackBuffer = writeableBitmap.BackBuffer;
+
+                        // Find the address of the pixel to draw.
+                        pBackBuffer += row * writeableBitmap.BackBufferStride;
+                        pBackBuffer += column * 4;
+                        int color_data = 0;
+                        if (memoryArray[j] == '1')
+                        {
+                            // Compute the pixel's color.
+                            color_data = 0 << 16; // R
+                            color_data |= 255 << 8;   // G
+                            color_data |= 0 << 0;   // B
+                        }
+                        else if (memoryArray[j] == '2')
+                        {
+                            color_data = 255 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 0 << 0;   // B
+                        }
+                        else if(memoryArray[j] == '3')
+                        {
+                            color_data = 0 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 255 << 0;   // B
+                        }
+                        else if (memoryArray[j] == '4')
+                        {
+                            color_data = 255 << 16; // R
+                            color_data |= 0 << 8;   // G
+                            color_data |= 255 << 0;   // B
+                        }
+
+                        *((int*)pBackBuffer) = color_data;
+                    }
+                    writeableBitmap.AddDirtyRect(new Int32Rect(column, row, 1, 1));
+                }
+                finally
+                {
+                    // Release the back buffer and make it available for display.
+                    writeableBitmap.Unlock();
+                }
+                j++;
+            }
+
+        }
         public void GetPorts()
         {
 
@@ -244,7 +312,37 @@ namespace EEPROM_Client
 
                     break;
                 case Commands.Write0:
-                    
+                    while (totalBytes != packSize)
+                    {
+                        int bufBytes = ComPort.BytesToRead;
+                        totalBytes += bufBytes;
+                        ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
+                    }
+
+                    foreach (byte b in gettingBytes)
+                    {
+
+                        var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
+                        Dispatcher.Invoke(() =>
+                        {
+                            DrawArray(index, 8, inputData);
+                        });
+                        index++;
+                        if (index >= 512 * 512 / (8))
+                        {
+                            index = 0;
+                            isContinue = false;
+                        }
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            txtBox_recieve.AppendText(inputData + "\r\n");
+                            txtBox_recieve.ScrollToEnd();
+                        });
+                    }
+                    if (isContinue)
+                        ComPort.Write(new byte[] { (byte)command }, 0, 1);
+
                     break;
                 case Commands.Write1:
 
@@ -279,90 +377,73 @@ namespace EEPROM_Client
                     if (isContinue)
                         ComPort.Write(new byte[] { (byte)command }, 0, 1);
                     break;
+                case Commands.Marching:
+
+                    var getBytes = new byte[packSize * 2];
+                    while (totalBytes != packSize*2)
+                    {
+                        int bufBytes = ComPort.BytesToRead;
+                        totalBytes += bufBytes;
+                        ComPort.Read(getBytes, totalBytes - bufBytes, bufBytes);
+                    }
+                    Array.Copy(getBytes, 0, bytes0, 0, packSize);
+                    Array.Copy(getBytes, packSize, bytes1, 0, packSize);
+
+                    var resultBytes = CompareResults();
+                    Dispatcher.Invoke(() =>
+                    {
+                        DrawArrayMarching(index, 8*packSize, resultBytes);
+                    });
+                    index++;
+                    if (index >= 512 * 512 / (8*packSize))
+                    {
+                        index = 0;
+                        isContinue = false;
+                    }
+                    Dispatcher.Invoke(() =>
+                    {
+                        txtBox_recieve.AppendText(resultBytes + "\r\n");
+                        txtBox_recieve.ScrollToEnd();
+                    });
+
+                    if (isContinue)
+                        ComPort.Write(new byte[] { (byte)command }, 0, 1);
+
+                    break;
             }
 
+        }
 
-       
-            /*
-            //InputData = ComPort.ReadExisting();
-            byte[] gettingBytes = new byte[packSize];
-            int totalBytes = 0;
-            while (totalBytes != packSize)
+        private string CompareResults()
+        {
+            var resultBytes = new byte[packSize];
+            string buf = "";
+            for(int i = 0; i < packSize; i++)
             {
-                int bufBytes = ComPort.BytesToRead;
-                totalBytes += bufBytes;
-                ComPort.Read(gettingBytes, totalBytes - bufBytes, bufBytes);
-            }
-            foreach(byte b in gettingBytes)
-            {
-
-                var inputData = Convert.ToString(b, 2).PadLeft(8, '0');
-                Dispatcher.Invoke(() =>
+                string bytes0Str = Convert.ToString(bytes0[i], 2).PadLeft(8, '0');
+                string bytes1Str = Convert.ToString(bytes1[i], 2).PadLeft(8, '0');
+                for (int j = 0; j < 8; j++)
                 {
-                    DrawArray(index, 8, inputData);
-                });
-                index++;
-                if (index >= 512 * 512 / (8))
-                {
-                    index = 0;
-                    isContinue = false;
+                    if (bytes0Str[j] == '0' && bytes1Str[j] == '1') //good
+                    {
+                        buf += '1';
+                    }
+                    else if (bytes0Str[j] == '0' && bytes1Str[j] == '0') //bad on zero
+                    {
+                        buf += '2';
+                    }
+                    else if (bytes0Str[j] == '1' && bytes1Str[j] == '1') //bad on one
+                    {
+                        buf += '3';
+                    }
+                    else //bad on invertor
+                    {
+                        buf += '4';
+                    }
                 }
 
-                Dispatcher.Invoke(() =>
-                {
-                    txtBox_recieve.AppendText(inputData + "\r\n");
-                    txtBox_recieve.ScrollToEnd();
-                });
             }
-
-            if (isContinue)
-                ComPort.Write(new byte[] { (byte)command }, 0, packSize);
-            */
-            //if (buffer.Length == 0)
-            //{
-            //    if (InputData.Length < packSize)
-            //    {
-            //        isPartial = true;
-            //        buffer += InputData;
-            //    }
-            //    else
-            //    {
-            //        isPartial = false;
-            //        buffer = InputData;
-            //    }
-            //}
-            //else
-            //{
-            //    buffer += InputData;
-            //    if (buffer.Length == packSize)
-            //        isPartial = false;
-            //}
-
-            //if (!isPartial)
-            //{
-            //    recvStr1 = InputData;
-            //    Dispatcher.Invoke(() =>
-            //    {
-
-            //        DrawArray(index, packSize, buffer);
-            //    });
-            //    index++;
-            //    if (index >= 512*512 / packSize)
-            //    {
-            //        index = 0;
-            //        testStr1 = testStr2;
-            //    }
-
-            //    Dispatcher.Invoke(() =>
-            //    {
-            //        txtBox_recieve.AppendText(buffer + "\r\n");
-            //        txtBox_recieve.ScrollToEnd();
-            //    });
-            //    buffer = "";
-
-
-            //    //ComPort.Write(testStr1);
-            //}
+            return buf;
 
         }
 
@@ -372,6 +453,7 @@ namespace EEPROM_Client
 
             command = Commands.Read;
             ClearBTMP();
+            ComPort.Write(new byte[] { (byte)Commands.ClearPosition }, 0, 1);
             ComPort.Write(new byte[] { (byte)command }, 0, 1);
 
             //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
@@ -385,6 +467,7 @@ namespace EEPROM_Client
             command = Commands.Write0;
             index = 0;
             ClearBTMP();
+            ComPort.Write(new byte[] { (byte)Commands.ClearPosition }, 0, 1);
             ComPort.Write(new byte[] { (byte)command }, 0, 1);
             //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
             //command = Commands.Write1;
@@ -409,7 +492,21 @@ namespace EEPROM_Client
             command = Commands.Write1;
             index = 0;
             ClearBTMP();
+            ComPort.Write(new byte[] { (byte)Commands.ClearPosition }, 0, 1);
             ComPort.Write(new byte[] { (byte)command }, 0, 1);
+            //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
+            //command = Commands.Write1;
+            isContinue = true;
+        }
+
+        private void btn_Marching_Click(object sender, RoutedEventArgs e)
+        {
+            command = Commands.Marching;
+            index = 0;
+            ClearBTMP();
+            ComPort.Write(new byte[] { (byte)Commands.ClearPosition }, 0, 1);
+            ComPort.Write(new byte[] { (byte)Commands.Marching }, 0, 1);
+            
             //ComPort.Write(new byte[] { 0b10000000 }, 0, 1);
             //command = Commands.Write1;
             isContinue = true;

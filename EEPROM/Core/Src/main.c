@@ -44,22 +44,19 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 
 const int packSize = 64;
-uint8_t recvBuf[64];
+uint8_t recvBuf;
 uint8_t sendBuf[64];
-uint8_t buf;
-uint8_t newBuf[8];
-uint8_t firstByteWait=1; 
-int offset = 0;
+uint8_t sendBufBig[64*2];
 
 int flag_irq = 0;
 int time_irq = 0;
-const uint8_t digits[]   = { 0xFF, 0xCF, 0xF9, 0xC9 };
-												//		00 		01		10		11
-uint8_t array[]   = { 0x00, 0x00, 0x00, 0x00 };
+
 uint8_t data[8];
 int row = 0;
 int col = 0;
-int time = 0;
+int bufCol = 0;
+int bufRow = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -72,34 +69,6 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void write_digit(uint8_t pos, uint8_t digit) {
-  int j = 0;
-	while(j < 8) {
-	  if (((digit << j) & 0x80) != 0) {
-		  HAL_GPIO_WritePin(Data_GPIO_Port, Data_Pin, GPIO_PIN_SET);
-		} else {
-		  HAL_GPIO_WritePin(Data_GPIO_Port, Data_Pin, GPIO_PIN_RESET);
-		}
-		HAL_GPIO_WritePin(Shift_GPIO_Port, Shift_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(Shift_GPIO_Port, Shift_Pin, GPIO_PIN_RESET);
-		j++;
-	}
-	
-	j = 0;
-	while(j < 8) {
-	  if (((pos << j) & 0x80) != 0) {
-		  HAL_GPIO_WritePin(Data_GPIO_Port, Data_Pin, GPIO_PIN_SET);
-		} else {
-		  HAL_GPIO_WritePin(Data_GPIO_Port, Data_Pin, GPIO_PIN_RESET);
-		}
-		HAL_GPIO_WritePin(Shift_GPIO_Port, Shift_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(Shift_GPIO_Port, Shift_Pin, GPIO_PIN_RESET);
-		j++;
-	}
-	
-	HAL_GPIO_WritePin(Latch_GPIO_Port, Latch_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(Latch_GPIO_Port, Latch_Pin, GPIO_PIN_RESET);
-}
 /* USER CODE END 0 */
 
 /**
@@ -137,31 +106,10 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
  
-	HAL_UART_Receive_IT (&huart2, recvBuf, 1);
+	HAL_UART_Receive_IT (&huart2, &recvBuf, 1);
 	
   while (1)
-  {				
-		
-		if(flag_irq && (HAL_GetTick() - time_irq) > 200)
-		{
-			__HAL_GPIO_EXTI_CLEAR_IT(BTN1_Pin); 
-			__HAL_GPIO_EXTI_CLEAR_IT(BTN2_Pin);
-			__HAL_GPIO_EXTI_CLEAR_IT(B1_Pin);
-			NVIC_ClearPendingIRQ(EXTI15_10_IRQn); 
-			NVIC_ClearPendingIRQ(EXTI9_5_IRQn); 
-			NVIC_ClearPendingIRQ(EXTI4_IRQn);
-			HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); 
-			HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);  
-			HAL_NVIC_EnableIRQ(EXTI4_IRQn); 			
-			
-			flag_irq = 0;
-		}
-		
-		
-			write_digit(0x01, array[0]);
-			write_digit(0x02, array[1]);
-			write_digit(0x04, array[2]);
-			write_digit(0x08, array[3]);
+  {
 		
     /* USER CODE END WHILE */
 
@@ -424,20 +372,6 @@ uint8_t ReadEEPROM(){
 	return (data[7] << 7) + (data[6] << 6) + (data[5] << 5) + (data[4] << 4) + (data[3] << 3) + (data[2] << 2) + (data[1] << 1) + data[0];
 }
 
-void ShowData(){
-
-	for (int i = 0; i < 4; i++){
-		if (data[2*i + 1] == 0 && data[2*i] == 0)
-			array[i] = digits[0];
-		else	if (data[2*i + 1] == 0 && data[2*i] == 1)
-			array[i] = digits[1];
-		else 	if (data[2*i + 1] == 1 && data[2*i] == 0)
-			array[i] = digits[2];
-		else 	if (data[2*i + 1] == 1 && data[2*i] == 1)
-			array[i] = digits[3];
-	}
-}
-
 void WriteEEPROM(uint8_t wrt){	
 	
 	GPIO_InitTypeDef GPIO_InitStruct;
@@ -499,12 +433,7 @@ void WriteEEPROM(uint8_t wrt){
 	if (col & 0b010000)
 		HAL_GPIO_WritePin(Column4_GPIO_Port, Column4_Pin, GPIO_PIN_SET);
 	if (col & 0b100000)
-		HAL_GPIO_WritePin(Column5_GPIO_Port, Column5_Pin, GPIO_PIN_SET);
-		
-	
-
-	
-	
+		HAL_GPIO_WritePin(Column5_GPIO_Port, Column5_Pin, GPIO_PIN_SET);	
 	
 	HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_RESET);	
@@ -546,54 +475,26 @@ void WriteEEPROM(uint8_t wrt){
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	/*		HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
 	
-  if(GPIO_Pin== BTN1_Pin) {
-		
-		col--;
-    if (col < 0){
-			col = 63;
-			row--;
-			if (row < 0)
-				row = 511;
-		}
-			ReadEEPROM();
-			ShowData();
-
-	} else if (GPIO_Pin == BTN2_Pin){		
-		
-    col++;
-    if (col > 63){
-			col = 0;
-			row++;
-			if (row > 511)
-				row = 0;
-		}
-			ReadEEPROM();
-			ShowData();
-		
-
-		
-  } else if (GPIO_Pin == B1_Pin){
-
-		WriteEEPROM(0b11111111);		
-
-	}
-
-		flag_irq = 1;
-    time_irq = HAL_GetTick();
-
-	*/
 }
 
-void ProgDelay(int ticks){
-	int a = 0;
-	for (int i = 0; i < ticks; i++){
-		a++;
+void incAddr(){
+	col++;
+	if (col > 63){
+		col = 0;
+		row++;
+		if (row > 511)
+			row = 0;
 	}		
-	
+}
+void decAddr(){
+	col--;
+	if (col < 0){
+		col = 63;
+		row--;
+		if (row < 0)
+			row = 511;
+	}	
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -601,168 +502,105 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	int oldCol = col;
 	int oldRow = row;
 	
-	switch(recvBuf[0]){
+	switch(recvBuf){
 	
 		case 0b00000001: //Read
 			for (int i=0; i<packSize; i++){
-	
 				sendBuf[i] = ReadEEPROM();
-				
-				
-			
-				col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}		
-			
+				incAddr();
 			}
+			HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
 			break;
 		
 		case 0b00000010: //write 0
 			
 			for (int i=0; i<packSize; i++){
-	
 				WriteEEPROM(0b00000000);
-				//sendBuf[i] = ReadEEPROM();
-			
-				col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}		
-			
+				incAddr();
 			}
-		
-			//ProgDelay(1000000);
+			
 			col = oldCol;
 			row = oldRow;
 			for (int i=0; i<packSize; i++){
-			
 				sendBuf[i] = ReadEEPROM();
-			
-				col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}		
-			
+				incAddr();	
 			}
-	
+			HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
 			break;
 			
 		case 0b00000011: //write 1
 			
 			for (int i=0; i<packSize; i++){
-	
 				WriteEEPROM(0b11111111);
-				//sendBuf[i] = ReadEEPROM();
-			
-				col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}		
-			
+				incAddr();		
 			}
 		
-			//ProgDelay(1000000);
 			col = oldCol;
 			row = oldRow;
 			for (int i=0; i<packSize; i++){
 			
 				sendBuf[i] = ReadEEPROM();
-			
-				col++;
-				if (col > 63){
-					col = 0;
-					row++;
-					if (row > 511)
-						row = 0;
-				}		
-			
+				incAddr();		
 			}
-	
+			HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
 			break;
-		case 0b10000000:
 			
-			HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(WE_GPIO_Port, WE_Pin, GPIO_PIN_SET);
+		case 0b10000000: //Marching test
 			
-			HAL_GPIO_WritePin(Row0_GPIO_Port, Row0_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row1_GPIO_Port, Row1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row2_GPIO_Port, Row2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row3_GPIO_Port, Row3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row4_GPIO_Port, Row4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row5_GPIO_Port, Row5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row6_GPIO_Port, Row6_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row7_GPIO_Port, Row7_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Row8_GPIO_Port, Row8_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column0_GPIO_Port, Column0_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column1_GPIO_Port, Column1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column2_GPIO_Port, Column2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column3_GPIO_Port, Column3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column4_GPIO_Port, Column4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(Column5_GPIO_Port, Column5_Pin, GPIO_PIN_RESET);
 		
-			HAL_GPIO_WritePin(OE_GPIO_Port, OE_Pin, GPIO_PIN_RESET);
-	
-			data[0] = HAL_GPIO_ReadPin(Data0_GPIO_Port, Data0_Pin);	
-			data[1] = HAL_GPIO_ReadPin(Data1_GPIO_Port, Data1_Pin);	
-			data[2] = HAL_GPIO_ReadPin(Data2_GPIO_Port, Data2_Pin);
-			data[3] = HAL_GPIO_ReadPin(Data3_GPIO_Port, Data3_Pin);
-			data[4] = HAL_GPIO_ReadPin(Data4_GPIO_Port, Data4_Pin);
-			data[5] = HAL_GPIO_ReadPin(Data5_GPIO_Port, Data5_Pin);
-			data[6] = HAL_GPIO_ReadPin(Data6_GPIO_Port, Data6_Pin);
-			data[7] = HAL_GPIO_ReadPin(Data7_GPIO_Port, Data7_Pin);
 		
+			for (int i=0; i<packSize; i++){
+				WriteEEPROM(0b00000000);
+				incAddr();		
+			}
+		
+			col = oldCol;
+			row = oldRow;
+			
+			for (int i=0; i<packSize; i++){
+			
+				sendBufBig[i] = ReadEEPROM();
+				incAddr();		
+			}
+			
+			col = oldCol;
+			row = oldRow;
+			
+			for (int i=0; i<packSize; i++){
+				WriteEEPROM(0b11111111);
+				incAddr();		
+			}
+		
+			col = oldCol;
+			row = oldRow;
+			
+			for (int i=0; i<packSize; i++){
+			
+				sendBufBig[i+packSize] = ReadEEPROM();
+				incAddr();		
+			}
+			
+			HAL_UART_Transmit_IT(&huart2, sendBufBig, packSize*2);
+			
 			break;
-	}
-	
-	/*
-	for (int i=0; i<packSize; i++){
-	
-		WriteEEPROM(recvBuf[i]);
-		//sendBuf[i] = ReadEEPROM();
-	
-		col++;
-    if (col > 63){
+		case 0b00001000: //Save position
+			bufCol = col;
+			bufRow = row;
+			break;
+		case 0b00001100: //Load position
+			col = bufCol;
+			row = bufRow;
+			break;
+		case 0b00001110: //ClearPosition
 			col = 0;
-			row++;
-			if (row > 511)
-				row = 0;
-		}		
-	
+			row = 0;
+			break;
+		
 	}
+		
 	
-	col = oldCol;
-	row = oldRow;
-	for (int i=0; i<packSize; i++){
 	
-		sendBuf[i] = ReadEEPROM();
-	
-		col++;
-    if (col > 63){
-			col = 0;
-			row++;
-			if (row > 511)
-				row = 0;
-		}		
-	
-	}
-	
-	*/	
-	HAL_UART_Transmit_IT(&huart2, sendBuf, packSize);
-	
-	HAL_UART_Receive_IT (&huart2, recvBuf, 1);
+	HAL_UART_Receive_IT (&huart2, &recvBuf, 1);
 
   
 } 
